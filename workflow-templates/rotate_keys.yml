@@ -1,0 +1,150 @@
+name: Rotate IAM Keys
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Quarterly approximation to every 90 days
+    - cron: "0 5 1 1,4,7,10 *"
+
+permissions:
+  contents: read
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment:
+          - dev
+          - base
+    environment: ${{ matrix.environment }}
+
+    env:
+      ROTATION_LAMBDA_NAME: ${{ vars.ROTATION_LAMBDA_NAME }}
+      ROTATION_ASSUME_ROLE_ARN: ${{ secrets.ROTATION_ASSUME_ROLE_ARN }}
+      IAM_USER_ARN: ${{ secrets.IAM_USER_ARN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Install GitHub CLI
+        # Will need this to update secrets values
+        run: |
+          type -p gh >/dev/null || (
+            sudo apt-get update &&
+            sudo apt-get install -y gh
+          )
+
+      - name: Configure AWS Credentials
+        if: github.ref == 'refs/heads/development'
+        uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          aws-access-key-id: ${{ secrets.DEV_ROTATE_AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.DEV_ROTATE_AWS_SECRET_KEY }}
+          role-to-assume: ${{ secrets.DEV_AWS_ROTATE_ROLE }}
+          role-skip-session-tagging: true
+          role-duration-seconds: 900
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Configure AWS Credentials
+        if: github.ref == 'refs/heads/base'
+        uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          aws-access-key-id: ${{ secrets.PROD_ROTATE_AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.PROD_ROTATE_AWS_SECRET_KEY }}
+          role-to-assume: ${{ secrets.PROD_AWS_ROTATE_ROLE }}
+          role-skip-session-tagging: true
+          role-duration-seconds: 900
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Derive IAM username and SSM parameter names
+        id: names
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          USERNAME="${IAM_USER_ARN##*/}"
+          PREFIX="/ci/rotated-iam-keys/${{ matrix.environment }}/${USERNAME}"
+
+          echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
+          echo "access_param=$PREFIX/AWS_ACCESS_KEY_ID" >> "$GITHUB_OUTPUT"
+          echo "secret_param=$PREFIX/AWS_SECRET_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Invoke rotation lambda
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > payload.json <<'JSON'
+          {
+            "user_arn": "${{ secrets.IAM_USER_ARN }}",
+            "environment": "${{ matrix.environment }}"
+          }
+          JSON
+
+          aws lambda invoke \
+            --function-name "$ROTATION_LAMBDA_NAME" \
+            --cli-binary-format raw-in-base64-out \
+            --payload fileb://payload.json \
+            response.json >/dev/null
+
+          echo "Lambda response:"
+          cat response.json
+
+          STATUS_CODE="$(jq -r '.statusCode' response.json)"
+          if [ "$STATUS_CODE" != "200" ]; then
+            echo "Lambda invocation failed"
+            exit 1
+          fi
+
+      - name: Read rotated credentials from SSM
+        id: ssm
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          NEW_ACCESS_KEY="$(
+            aws ssm get-parameter \
+              --name "${{ steps.names.outputs.access_param }}" \
+              --with-decryption \
+              --query 'Parameter.Value' \
+              --output text
+          )"
+
+          NEW_SECRET_KEY="$(
+            aws ssm get-parameter \
+              --name "${{ steps.names.outputs.secret_param }}" \
+              --with-decryption \
+              --query 'Parameter.Value' \
+              --output text
+          )"
+
+          {
+            echo "new_access_key=$NEW_ACCESS_KEY"
+            echo "new_secret_key=$NEW_SECRET_KEY"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update GitHub environment secrets
+        env:
+          GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh secret set AWS_ACCESS_KEY \
+            --repo "$GITHUB_REPOSITORY" \
+            --env "${{ matrix.environment }}" \
+            --body "${{ steps.ssm.outputs.new_access_key }}"
+
+          gh secret set AWS_SECRET_KEY \
+            --repo "$GITHUB_REPOSITORY" \
+            --env "${{ matrix.environment }}" \
+            --body "${{ steps.ssm.outputs.new_secret_key }}"
+
+      - name: Done
+        run: |
+          echo "Rotation completed for ${{ matrix.environment }}"
+          echo "IAM user: ${{ steps.names.outputs.username }}"
