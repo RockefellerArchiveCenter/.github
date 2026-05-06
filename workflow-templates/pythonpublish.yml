@@ -40,7 +40,7 @@ jobs:
 
     permissions:
       id-token: write
-      contents: read
+      contents: write
 
     steps:
       - name: Check out released code
@@ -58,6 +58,14 @@ jobs:
 
       - name: Build a binary wheel and a source tarball
         run: python3 -m build
+
+      - name: Attach source tarball to GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.release-please.outputs.tag_name }}" \
+            dist/*.tar.gz \
+            --clobber
 
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@v1.13.0
