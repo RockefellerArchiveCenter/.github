@@ -1,0 +1,6 @@
+{
+  "name": "PythonPublish release",
+  "description": "Create a release using the organization's PyPi automatic release workflow.",
+  "iconName": "octicon tag",
+  "categories": ["Automation", "deployment", "release"]
+}
