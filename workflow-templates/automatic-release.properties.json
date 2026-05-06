@@ -1,0 +1,6 @@
+{
+  "name": "Automatic Release",
+  "description": "Create a release using the organization's standard automatic release workflow.",
+  "iconName": "octicon tag",
+  "categories": ["Automation", "deployment", "release"]
+}
