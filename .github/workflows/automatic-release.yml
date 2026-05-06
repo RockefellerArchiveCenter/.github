@@ -16,6 +16,7 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4.4.0
         with:
+          release-type: simple
           target-branch: base
           token: ${{ secrets.GITHUB_TOKEN }}
 
