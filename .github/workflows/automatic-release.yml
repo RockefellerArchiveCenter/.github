@@ -16,6 +16,7 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4.4.0
         with:
+          release-type: simple
           target-branch: base
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -68,5 +69,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${{ steps.release.outputs.tag_name }}" \
-            "application-${{ steps.release.outputs.tag_name }}.zip" \
+            "${REPO_NAME}-${{ steps.release.outputs.tag_name }}.zip" \
             --clobber
