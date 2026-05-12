@@ -1,0 +1,6 @@
+{
+  "name": "Python dependencies - Autoupdate and tests only",
+  "description": "Updates Python dependencies using autoupdate and test requirements only.",
+  "iconName": "octicon tag",
+  "categories": ["Automation", "deployment", "dependencies"]
+}

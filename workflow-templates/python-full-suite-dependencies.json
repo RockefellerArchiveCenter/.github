@@ -1,0 +1,6 @@
+{
+  "name": "Python dependencies - Full suite",
+  "description": "Updates Python dependencies (pip-compile, autoupdate, tests).",
+  "iconName": "octicon tag",
+  "categories": ["Automation", "deployment", "dependencies"]
+}

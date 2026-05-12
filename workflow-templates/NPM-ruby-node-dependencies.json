@@ -1,0 +1,6 @@
+{
+  "name": "Ruby & Node dependency updates - NPM",
+  "description": "Updates ruby and Node dependencies with npm.",
+  "iconName": "octicon tag",
+  "categories": ["Automation", "deployment", "dependencies"]
+}
