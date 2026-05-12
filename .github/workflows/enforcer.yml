@@ -1,0 +1,19 @@
+name: Check Branch
+
+on:
+  workflow_call:
+
+jobs:
+  check_branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch
+        run: |
+          if [[ "${{ github.head_ref }}" == "development" ]] || \
+             [[ "${{ github.head_ref }}" == release-please--branches--* ]]; then
+            echo "Allowed source branch: ${{ github.head_ref }}"
+            exit 0
+          fi
+
+          echo "ERROR: You can only merge to base from development or an approved release branch."
+          exit 1
