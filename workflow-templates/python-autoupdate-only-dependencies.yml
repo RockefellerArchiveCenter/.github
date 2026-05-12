@@ -1,0 +1,13 @@
+name: Python autoupdate only dependencies
+on:
+  schedule:
+    - cron:  '0 0 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automatic-release:
+    uses: RockefellerArchiveCenter/.github/.github/workflows/python-autoupdate-only-dependencies.yml@base
