@@ -5,17 +5,10 @@ on:
     branches:
       - base
 
-jobs:
-  check_branch:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check branch
-        run: |
-          if [[ "${{ github.head_ref }}" == "development" ]] || \
-             [[ "${{ github.head_ref }}" == release-please--branches--* ]]; then
-            echo "Allowed source branch: ${{ github.head_ref }}"
-            exit 0
-          fi
+permissions:
+  contents: write
+  pull-requests: write
 
-          echo "ERROR: You can only merge to base from development or an approved release branch."
-          exit 1
+jobs:
+  automatic-release:
+    uses: RockefellerArchiveCenter/.github/.github/workflows/enforcer.yml@base
