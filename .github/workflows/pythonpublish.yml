@@ -22,7 +22,8 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4
         with:
-          release-type: python
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
           target-branch: base
 
   publish:
@@ -33,7 +34,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/asterism
+      url: https://pypi.org/project/${{ vars.PACKAGE_NAME }}/
 
     permissions:
       id-token: write
