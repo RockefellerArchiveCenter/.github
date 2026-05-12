@@ -1,0 +1,6 @@
+{
+  "name": "Enforces branch protection",
+  "description": "Blocks specific PRs against the base branch.",
+  "iconName": "octicon tag",
+  "categories": ["Automation", "deployment"]
+}
