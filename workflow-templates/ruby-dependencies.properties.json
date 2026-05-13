@@ -1,6 +1,0 @@
-{
-  "name": "Ruby dependencies",
-  "description": "Updates Ruby dependencies.",
-  "iconName": "octicon tag",
-  "categories": ["Automation", "deployment", "dependencies"]
-}

@@ -1,4 +1,4 @@
-name: Ruby & Node dependencies using yarn
+name: Node & Ruby dependency updates
 on:
   schedule:
     - cron:  '0 0 1 * *'
@@ -10,4 +10,4 @@ permissions:
 
 jobs:
   automatic-release:
-    uses: RockefellerArchiveCenter/.github/.github/workflows/YARN-ruby-node-dependencies.yml@base
+    uses: RockefellerArchiveCenter/.github/.github/workflows/node-ruby-dependencies.yml@base
