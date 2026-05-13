@@ -1,6 +1,0 @@
-{
-  "name": "Node dependencies - Yarn",
-  "description": "Updates Node dependencies using yarn.",
-  "iconName": "octicon tag",
-  "categories": ["Automation", "deployment", "dependencies"]
-}
