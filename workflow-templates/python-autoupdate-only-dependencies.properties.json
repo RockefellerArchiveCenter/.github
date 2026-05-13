@@ -1,6 +1,0 @@
-{
-  "name": "Python dependencies - Autoupdate only",
-  "description": "Updates Python dependencies using autoupdate only.",
-  "iconName": "octicon tag",
-  "categories": ["Automation", "deployment", "dependencies"]
-}
