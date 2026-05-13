@@ -1,6 +1,0 @@
-{
-  "name": "Python dependency updates - No tests",
-  "description": "Updates python dependencies. Does not include test requirements.",
-  "iconName": "octicon tag",
-  "categories": ["Automation", "deployment", "dependencies"]
-}
