@@ -76,6 +76,7 @@ jobs:
         run: rm -f changes.patch
 
       - name: Create Pull Request
+        if: always()
         uses: peter-evans/create-pull-request@v8.1.1
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
