@@ -2,6 +2,9 @@ name: update python dependencies
 
 on:
   workflow_call:
+    secrets:
+      ACCESS_TOKEN:
+        required: true
 
 jobs:
   build:
