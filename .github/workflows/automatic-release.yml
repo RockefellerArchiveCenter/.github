@@ -2,6 +2,11 @@ name: Release Please
 
 on:
   workflow_call:
+    inputs:
+      release-type:
+        required: false
+        type: string
+        default: simple
 
 permissions:
   contents: write
@@ -16,7 +21,7 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4.4.0
         with:
-          release-type: simple
+          release-type: ${{ inputs.release-type }}
           target-branch: base
           token: ${{ secrets.GITHUB_TOKEN }}
 
