@@ -3,6 +3,10 @@ name: Release Please
 on:
   workflow_call:
     inputs:
+      use-manifest:
+        required: false
+        type: boolean
+        default: false
       release-type:
         required: false
         type: string
@@ -18,12 +22,34 @@ jobs:
 
     steps:
       - name: Run Release Please
-        id: release
+        id: release_simple
+        if: ${{ !inputs.use-manifest }}
         uses: googleapis/release-please-action@v4.4.0
         with:
           release-type: ${{ inputs.release-type }}
           target-branch: base
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Release Please from manifest
+        id: release_manifest
+        if: ${{ inputs.use-manifest }}
+        uses: googleapis/release-please-action@v4.4.0
+        with:
+          target-branch: base
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Normalize release outputs
+        id: release
+        if: always()
+        run: |
+          echo "release_created=${{ steps.release_simple.outputs.release_created || steps.release_manifest.outputs.release_created }}" >> "$GITHUB_OUTPUT"
+          echo "releases_created=${{ steps.release_simple.outputs.releases_created || steps.release_manifest.outputs.releases_created }}" >> "$GITHUB_OUTPUT"
+          echo "prs_created=${{ steps.release_simple.outputs.prs_created || steps.release_manifest.outputs.prs_created }}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${{ steps.release_simple.outputs.tag_name || steps.release_manifest.outputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ steps.release_simple.outputs.version || steps.release_manifest.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "html_url=${{ steps.release_simple.outputs.html_url || steps.release_manifest.outputs.html_url }}" >> "$GITHUB_OUTPUT"
 
       - name: Output release info
         if: always()
