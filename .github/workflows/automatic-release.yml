@@ -2,6 +2,9 @@ name: Release Please
 
 on:
   workflow_call:
+    secrets:
+      RELEASE_PLEASE_TOKEN:
+        required: true
     inputs:
       use-manifest:
         required: false
