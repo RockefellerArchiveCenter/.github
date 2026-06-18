@@ -2,6 +2,9 @@ name: Release Please
 
 on:
   workflow_call:
+    secrets:
+      RELEASE_PLEASE_TOKEN:
+        required: true
     outputs:
       release_created:
         description: Whether Release Please created a release
@@ -34,3 +37,4 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           target-branch: base
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
