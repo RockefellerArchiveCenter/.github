@@ -20,11 +20,33 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout development
         uses: actions/checkout@v6.0.2
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
           ref: development
+          fetch-depth: 0
+
+      - name: Run GitHub Actions Version Updater
+        uses: saadmk11/github-actions-version-updater@v0.9.0
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          skip_pull_request: "false"
+          pull_request_branch: dependency-updates
+          pull_request_title: "fix(deps): Scheduled dependency updates"
+          commit_message: "fix(deps): update GitHub Actions"
+
+      - name: Checkout dependency update branch
+        shell: bash
+        run: |
+          git fetch origin development
+
+          if git ls-remote --exit-code --heads origin dependency-updates; then
+            git fetch origin dependency-updates
+            git switch -C dependency-updates origin/dependency-updates
+          else
+            git switch -C dependency-updates origin/development
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v6.2.0
@@ -36,23 +58,9 @@ jobs:
         id: files
         shell: bash
         run: |
-          if [[ -f requirements.in ]]; then
-            echo "has_requirements=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_requirements=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [[ -f tests/test_requirements.in ]]; then
-            echo "has_test_requirements=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_test_requirements=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [[ -f test_requirements.in ]]; then
-            echo "has_base_test_requirements=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_base_test_requirements=false" >> "$GITHUB_OUTPUT"
-          fi
+          echo "has_requirements=$([[ -f requirements.in ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has_test_requirements=$([[ -f tests/test_requirements.in ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has_base_test_requirements=$([[ -f test_requirements.in ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
       - name: Install pre-commit and pip-tools
         run: pip install pre-commit pip-tools
@@ -63,7 +71,6 @@ jobs:
       - name: Update requirements
         if: steps.files.outputs.has_requirements == 'true'
         run: pip-compile --upgrade --no-header
-
       - name: Update test requirements
         if: steps.files.outputs.has_test_requirements == 'true'
         run: pip-compile --upgrade --no-header tests/test_requirements.in -o tests/test_requirements.txt
@@ -72,27 +79,18 @@ jobs:
         if: steps.files.outputs.has_base_test_requirements == 'true'
         run: pip-compile --upgrade --no-header test_requirements.in -o test_requirements.txt
 
-      - name: Run GitHub Actions Version Updater
-        uses: saadmk11/github-actions-version-updater@v0.9.0
-        with:
-          token: ${{ secrets.ACCESS_TOKEN }}
-          skip_pull_request: "true"
-
-      - name: Create patch
-        if: always()
+      - name: Debug git state
+        shell: bash
         run: |
-          git diff > changes.patch
-          git apply --allow-empty "changes.patch"
-      
-      - name: Delete patch file
-        if: always()
-        run: rm -f changes.patch
+          git status --short
+          git diff --stat
 
-      - name: Create Pull Request
-        if: always()
+      - name: Create or update dependency PR
         uses: peter-evans/create-pull-request@v8.1.1
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
+          base: development
           branch: dependency-updates
           title: "fix(deps): Scheduled dependency updates"
-          commit-message: "fix(deps): Scheduled dependency updates"
+          commit-message: "fix(deps): update Python dependencies"
+          delete-branch: true
