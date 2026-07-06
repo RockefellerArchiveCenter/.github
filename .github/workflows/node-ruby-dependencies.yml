@@ -74,5 +74,5 @@ jobs:
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
           branch: dependency-updates
-          title: "chore: Dependency Updates"
-          commit-message: "chore: Scheduled dependency updates"
+          title: "fix(deps): Dependency Updates"
+          commit-message: "fix(deps): Scheduled dependency updates"
