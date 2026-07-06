@@ -21,6 +21,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
       pull-requests: write
@@ -30,6 +31,7 @@ jobs:
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
           ref: development
+          fetch-depth: 0
 
       - name: Detect dependency files
         id: detect
@@ -61,18 +63,26 @@ jobs:
         if: steps.detect.outputs.uses_yarn == 'true'
         run: yarn install && yarn upgrade
 
-      - name: Run GitHub Actions Version Updater
-        continue-on-error: true
-        uses: saadmk11/github-actions-version-updater@v0.9.0
-        with:
-          token: ${{ secrets.ACCESS_TOKEN }}
-          skip_pull_request: "true"
+      - name: Install actions-up
+        run: npm install -g actions-up
+
+      - name: Update GitHub Actions versions
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: actions-up --yes --style preserve
+
+      - name: Debug git state
+        shell: bash
+        run: |
+          git status --short
+          git diff --stat
 
       - name: Create Pull Request
-        if: always()
         uses: peter-evans/create-pull-request@v8.1.1
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
+          base: development
           branch: dependency-updates
           title: "fix(deps): Dependency Updates"
           commit-message: "fix(deps): Scheduled dependency updates"
+          delete-branch: true
