@@ -6,14 +6,27 @@ on:
 jobs:
   check_branch:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check branch
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+          BASE_BRANCH: ${{ github.base_ref }}
         run: |
-          if [[ "${{ github.head_ref }}" == "development" ]] || \
-             [[ "${{ github.head_ref }}" == release-please--branches--* ]]; then
-            echo "Allowed source branch: ${{ github.head_ref }}"
+          echo "Checking ${HEAD_BRANCH} -> ${BASE_BRANCH}"
+
+          # This restriction only applies to PRs targeting base.
+          if [[ "${BASE_BRANCH}" != "base" ]]; then
+            echo "Target branch is not base. No enforcement required."
             exit 0
           fi
 
-          echo "ERROR: You can only merge to base from development or an approved release branch."
+          # Only development may be merged into base.
+          if [[ "${HEAD_BRANCH}" == "development" ]]; then
+            echo "Allowed: development -> base"
+            exit 0
+          fi
+
+          echo "ERROR: Only the development branch may be merged into base."
           exit 1
