@@ -14,5 +14,4 @@ permissions:
 
 jobs:
   branch-enforcer:
-    if: github.base_ref == 'base'
     uses: RockefellerArchiveCenter/.github/.github/workflows/enforcer.yml@base
