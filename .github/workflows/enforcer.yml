@@ -16,17 +16,16 @@ jobs:
         run: |
           echo "Checking ${HEAD_BRANCH} -> ${BASE_BRANCH}"
 
-          # This restriction only applies to PRs targeting base.
           if [[ "${BASE_BRANCH}" != "base" ]]; then
-            echo "Target branch is not base. No enforcement required."
+            echo "Target is not base; branch restriction does not apply."
             exit 0
           fi
 
-          # Only development may be merged into base.
-          if [[ "${HEAD_BRANCH}" == "development" ]]; then
-            echo "Allowed: development -> base"
+          if [[ "${HEAD_BRANCH}" == "development" ]] || \
+             [[ "${HEAD_BRANCH}" == release-please--branches* ]]; then
+            echo "Allowed source branch: ${HEAD_BRANCH}"
             exit 0
           fi
 
-          echo "ERROR: Only the development branch may be merged into base."
+          echo "ERROR: Only development or a Release Please branch for base may merge into base."
           exit 1
