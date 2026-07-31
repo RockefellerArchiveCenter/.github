@@ -62,7 +62,8 @@ jobs:
 
       - name: Install pre-commit, pip-tools, and actions-up
         run: |
-          pip install pre-commit pip-tools
+          python -m pip install --upgrade "pip<26.2"
+          python -m pip install pre-commit pip-tools
           npm install -g actions-up
 
       - name: Run pre-commit autoupdate
