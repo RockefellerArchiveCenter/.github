@@ -64,15 +64,15 @@ jobs:
         run: |
           python -m pip install --upgrade "pip<26.2"
           python -m pip install pre-commit pip-tools
-          npm install -g actions-up
+#          npm install -g actions-up
 
       - name: Run pre-commit autoupdate
         run: pre-commit autoupdate
 
-      - name: Update GitHub Actions versions
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        run: actions-up --yes --style preserve
+#      - name: Update GitHub Actions versions
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+#        run: actions-up --yes --style preserve
 
       - name: Update requirements
         if: steps.files.outputs.has_requirements == 'true'
