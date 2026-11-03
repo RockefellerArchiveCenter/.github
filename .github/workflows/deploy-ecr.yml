@@ -1,0 +1,75 @@
+name: RAC reusable ecr
+on:
+  workflow_call:
+    inputs:
+      deployment-environment:
+        type: string
+        required: true
+      checkout-submodules:
+        type: boolean
+        required: false
+        default: false
+      app-name:
+        type: string
+        required: true
+      docker-target:
+        type: string
+        required: false
+        default: build
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.deployment-environment }}
+    steps:
+    - name: Checkout caller repository
+      uses: actions/checkout@v4
+      with:
+        submodules: ${{ inputs.checkout-submodules }}
+        fetch-depth: 0
+    - name: Configure AWS via GitHub OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ECR_DEPLOY_ROLE }}
+        aws-region: ${{ secrets.AWS_REGION }}
+        role-duration-seconds: 900
+    - name: Validate ECR registry configuration
+      env:
+        ECR_ACCOUNT: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+      run: 'test -n "$ECR_ACCOUNT" || { echo "::error::AWS_ECR_ACCOUNT_ID is required"; exit 1; }
+
+        aws sts get-caller-identity --query Account --output text | grep -Fx "$ECR_ACCOUNT" || { echo "::error::ECR role must be in target registry
+        account (cross-account mode not enabled)"; exit 1; }
+
+        '
+    - name: Login to ECR
+      uses: aws-actions/amazon-ecr-login@v2
+    - name: Build development image
+      if: github.event_name == 'push' && github.ref == 'refs/heads/base'
+      run: docker build --target "${{ inputs.docker-target }}" -t "${{ inputs.app-name }}" .
+    - name: Tag development image
+      if: github.event_name == 'push' && github.ref == 'refs/heads/base'
+      run: docker tag "${{ inputs.app-name }}" "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ 
+        inputs.app-name }}:dev"
+    - name: Push development image
+      if: github.event_name == 'push' && github.ref == 'refs/heads/base'
+      run: docker push "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev"
+    - name: Pull development image for release
+      if: github.event_name == 'release' && github.event.action == 'published'
+      run: docker pull "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev"
+    - name: Tag production image
+      if: github.event_name == 'release' && github.event.action == 'published'
+      run: docker tag "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev" "${{ 
+        secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:prod"
+    - name: Push production image
+      if: github.event_name == 'release' && github.event.action == 'published'
+      run: docker push "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:prod"
+    - name: Tag latest image
+      if: github.event_name == 'release' && github.event.action == 'published'
+      run: docker tag "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev" "${{ 
+        secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:latest"
+    - name: Push latest image
+      if: github.event_name == 'release' && github.event.action == 'published'
+      run: docker push "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:latest"

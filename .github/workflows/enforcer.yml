@@ -1,31 +1,20 @@
 name: Check Branch
-
 on:
   workflow_call:
-
+permissions:
+  contents: read
 jobs:
   check_branch:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check branch
+      - name: Validate trunk-based pull request
         shell: bash
         env:
           HEAD_BRANCH: ${{ github.head_ref }}
           BASE_BRANCH: ${{ github.base_ref }}
         run: |
-          echo "Checking ${HEAD_BRANCH} -> ${BASE_BRANCH}"
-
-          if [[ "${BASE_BRANCH}" != "base" ]]; then
-            echo "Target is not base; branch restriction does not apply."
-            exit 0
+          if [[ "$BASE_BRANCH" == "base" && "$HEAD_BRANCH" == "development" ]]; then
+            echo "::error::development is retired; open short-lived feature PRs against base"
+            exit 1
           fi
-
-          if [[ "${HEAD_BRANCH}" == "development" ]] || \
-             [[ "${HEAD_BRANCH}" == release-please--branches* ]]; then
-            echo "Allowed source branch: ${HEAD_BRANCH}"
-            exit 0
-          fi
-
-          echo "ERROR: Only development or a Release Please branch for base may merge into base."
-          exit 1
+          echo "Trunk PR branch policy passed"

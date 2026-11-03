@@ -1,0 +1,308 @@
+name: RAC reusable codedjango
+on:
+  workflow_call:
+    inputs:
+      deployment-environment:
+        type: string
+        required: true
+      checkout-submodules:
+        type: boolean
+        required: false
+        default: false
+      app-name:
+        type: string
+        required: true
+      direct-upload:
+        type: boolean
+        required: false
+        default: false
+      app-port:
+        type: string
+        required: false
+        default: ''
+      container:
+        type: string
+        required: false
+        default: ''
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.deployment-environment }}
+    steps:
+    - name: Checkout caller repository
+      uses: actions/checkout@v4
+      with:
+        submodules: ${{ inputs.checkout-submodules }}
+    - name: Get shared deployment scripts
+      run: git clone 
+        https://github.com/RockefellerArchiveCenter/deploy_scripts.git
+    - name: Render argo Django configuration
+      if: ${{ inputs.app-name == 'argo' }}
+      shell: bash
+      env:
+        CITATION_REPOSITORY_BASEURL: ${{ secrets.CITATION_REPOSITORY_BASEURL }}
+        CITATION_REPOSITORY_NAME: ${{ secrets.CITATION_REPOSITORY_NAME }}
+        CITATION_SEPARATOR: ${{ secrets.CITATION_SEPARATOR }}
+        DJANGO_ALLOWED_HOSTS: ${{ secrets.DJANGO_ALLOWED_HOSTS }}
+        DJANGO_DEBUG: ${{ secrets.DJANGO_DEBUG }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        DJANGO_STATIC_URL: ${{ secrets.DJANGO_STATIC_URL }}
+        ELASTICSEARCH_API_KEY: ${{ secrets.ELASTICSEARCH_API_KEY }}
+        ELASTICSEARCH_CONNECTION: ${{ secrets.ELASTICSEARCH_CONNECTION }}
+        ELASTICSEARCH_HOSTS: ${{ secrets.ELASTICSEARCH_HOSTS }}
+        ELASTICSEARCH_INDEX: ${{ secrets.ELASTICSEARCH_INDEX }}
+        SECURE_PROXY_SSL_HEADER: ${{ secrets.SECURE_PROXY_SSL_HEADER }}
+        SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+        SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+        SQL_HOST: ${{ secrets.SQL_HOST }}
+        SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+        SQL_PORT: ${{ secrets.SQL_PORT }}
+        SQL_USER: ${{ secrets.SQL_USER }}
+        USE_X_FORWARDED_HOST: ${{ secrets.USE_X_FORWARDED_HOST }}
+      run: |
+        envsubst '${CITATION_REPOSITORY_BASEURL} ${CITATION_REPOSITORY_NAME} ${CITATION_SEPARATOR} ${DJANGO_ALLOWED_HOSTS} ${DJANGO_DEBUG} ${DJANGO_SECRET_KEY} ${DJANGO_STATIC_URL} ${ELASTICSEARCH_API_KEY} ${ELASTICSEARCH_CONNECTION} ${ELASTICSEARCH_HOSTS} ${ELASTICSEARCH_INDEX} ${SECURE_PROXY_SSL_HEADER} ${SQL_DATABASE} ${SQL_ENGINE} ${SQL_HOST} ${SQL_PASSWORD} ${SQL_PORT} ${SQL_USER} ${USE_X_FORWARDED_HOST}' \
+          < argo/config.py.deploy > argo/config.py
+        rm argo/config.py.deploy
+    - name: Render aurora Django configuration
+      if: ${{ inputs.app-name == 'aurora' }}
+      shell: bash
+      env:
+        APPLICATION_PORT: ${{ inputs.app-port }}
+        ASPACE_BASEURL: ${{ secrets.ASPACE_BASEURL }}
+        ASPACE_PASSWORD: ${{ secrets.ASPACE_PASSWORD }}
+        ASPACE_REPO_ID: ${{ secrets.ASPACE_REPO_ID }}
+        ASPACE_USERNAME: ${{ secrets.ASPACE_USERNAME }}
+        COGNITO_ACCESS_KEY: ${{ secrets.COGNITO_ACCESS_KEY }}
+        COGNITO_CLIENT_BASE_URL: ${{ secrets.COGNITO_CLIENT_BASE_URL }}
+        COGNITO_CLIENT_CALLBACK_URL: ${{ secrets.COGNITO_CLIENT_CALLBACK_URL }}
+        COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+        COGNITO_CLIENT_SECRET_KEY: ${{ secrets.COGNITO_CLIENT_SECRET_KEY }}
+        COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
+        COGNITO_SECRET_KEY: ${{ secrets.COGNITO_SECRET_KEY }}
+        COGNITO_USE: ${{ secrets.COGNITO_USE }}
+        COGNITO_USER_POOL: ${{ secrets.COGNITO_USER_POOL }}
+        DELIVERY_API_KEY: ${{ secrets.DELIVERY_API_KEY }}
+        DELIVERY_URL: ${{ secrets.DELIVERY_URL }}
+        DJANGO_ALLOWED_HOSTS: ${{ secrets.DJANGO_ALLOWED_HOSTS }}
+        DJANGO_BASE_URL: ${{ secrets.DJANGO_BASE_URL }}
+        DJANGO_CRON_LOCKFILE_PATH: ${{ secrets.DJANGO_CRON_LOCKFILE_PATH }}
+        DJANGO_DEBUG: ${{ secrets.DJANGO_DEBUG }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        DJANGO_STATIC_URL: ${{ secrets.DJANGO_STATIC_URL }}
+        DJANGO_TIME_ZONE: ${{ secrets.DJANGO_TIME_ZONE }}
+        EMAIL_DEFAULT_FROM_EMAIL: ${{ secrets.EMAIL_DEFAULT_FROM_EMAIL }}
+        EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+        EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+        EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+        EMAIL_PASSWORD_RESET_TIMEOUT_DAYS: ${{ 
+          secrets.EMAIL_PASSWORD_RESET_TIMEOUT_DAYS }}
+        EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+        EMAIL_USE_SSL: ${{ secrets.EMAIL_USE_SSL }}
+        EMAIL_USE_TLS: ${{ secrets.EMAIL_USE_TLS }}
+        IAM_ACCESS_KEY: ${{ secrets.IAM_ACCESS_KEY }}
+        IAM_PATH: ${{ secrets.IAM_PATH }}
+        IAM_REGION: ${{ secrets.IAM_REGION }}
+        IAM_SECRET_KEY: ${{ secrets.IAM_SECRET_KEY }}
+        MTM_ID: ${{ secrets.MTM_ID }}
+        S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+        S3_DELIVER: ${{ secrets.S3_DELIVER }}
+        S3_KEY_ROTATION_PERIOD: ${{ secrets.S3_KEY_ROTATION_PERIOD }}
+        S3_PREFIX: ${{ secrets.S3_PREFIX }}
+        S3_REGION: ${{ secrets.S3_REGION }}
+        S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+        S3_USE: ${{ secrets.S3_USE }}
+        SNS_ROLE: ${{ secrets.SNS_ROLE }}
+        SNS_TOPIC: ${{ secrets.SNS_TOPIC }}
+        SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+        SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+        SQL_HOST: ${{ secrets.SQL_HOST }}
+        SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+        SQL_PORT: ${{ secrets.SQL_PORT }}
+        SQL_USER: ${{ secrets.SQL_USER }}
+        TEST_BAGS_DIR: ${{ secrets.TEST_BAGS_DIR }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+        TEST_USER_USERNAME: ${{ secrets.TEST_USER_USERNAME }}
+        TRANSFER_DELIVERY_BUCKET: ${{ secrets.TRANSFER_DELIVERY_BUCKET }}
+        TRANSFER_DELIVERY_QUEUE_DIR: ${{ secrets.TRANSFER_DELIVERY_QUEUE_DIR }}
+        TRANSFER_EXTRACT_TMP: ${{ secrets.TRANSFER_EXTRACT_TMP }}
+        TRANSFER_FILESIZE_MAX: ${{ secrets.TRANSFER_FILESIZE_MAX }}
+        TRANSFER_STORAGE_ROOT_DIR: ${{ secrets.TRANSFER_STORAGE_ROOT_DIR }}
+        TRANSFER_UPLOADS_ROOT: ${{ secrets.TRANSFER_UPLOADS_ROOT }}
+        TRANSFER_UPLOAD_LOG_FILE: ${{ secrets.TRANSFER_UPLOAD_LOG_FILE }}
+      run: |
+        envsubst '${APPLICATION_PORT} ${ASPACE_BASEURL} ${ASPACE_PASSWORD} ${ASPACE_REPO_ID} ${ASPACE_USERNAME} ${COGNITO_ACCESS_KEY} ${COGNITO_CLIENT_BASE_URL} ${COGNITO_CLIENT_CALLBACK_URL} ${COGNITO_CLIENT_ID} ${COGNITO_CLIENT_SECRET_KEY} ${COGNITO_REGION} ${COGNITO_SECRET_KEY} ${COGNITO_USE} ${COGNITO_USER_POOL} ${DELIVERY_API_KEY} ${DELIVERY_URL} ${DJANGO_ALLOWED_HOSTS} ${DJANGO_BASE_URL} ${DJANGO_CRON_LOCKFILE_PATH} ${DJANGO_DEBUG} ${DJANGO_SECRET_KEY} ${DJANGO_STATIC_URL} ${DJANGO_TIME_ZONE} ${EMAIL_DEFAULT_FROM_EMAIL} ${EMAIL_HOST} ${EMAIL_HOST_PASSWORD} ${EMAIL_HOST_USER} ${EMAIL_PASSWORD_RESET_TIMEOUT_DAYS} ${EMAIL_PORT} ${EMAIL_USE_SSL} ${EMAIL_USE_TLS} ${IAM_ACCESS_KEY} ${IAM_PATH} ${IAM_REGION} ${IAM_SECRET_KEY} ${MTM_ID} ${S3_ACCESS_KEY} ${S3_DELIVER} ${S3_KEY_ROTATION_PERIOD} ${S3_PREFIX} ${S3_REGION} ${S3_SECRET_KEY} ${S3_USE} ${SNS_ROLE} ${SNS_TOPIC} ${SQL_DATABASE} ${SQL_ENGINE} ${SQL_HOST} ${SQL_PASSWORD} ${SQL_PORT} ${SQL_USER} ${TEST_BAGS_DIR} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} ${TRANSFER_DELIVERY_BUCKET} ${TRANSFER_DELIVERY_QUEUE_DIR} ${TRANSFER_EXTRACT_TMP} ${TRANSFER_FILESIZE_MAX} ${TRANSFER_STORAGE_ROOT_DIR} ${TRANSFER_UPLOADS_ROOT} ${TRANSFER_UPLOAD_LOG_FILE}' \
+          < aurora/config.py.deploy > aurora/config.py
+        rm aurora/config.py.deploy
+    - name: Render cartographer_backend Django configuration
+      if: ${{ inputs.app-name == 'cartographer_backend' }}
+      shell: bash
+      env:
+        AS_BASEURL: ${{ secrets.AS_BASEURL }}
+        AS_PASSWORD: ${{ secrets.AS_PASSWORD }}
+        AS_REPO_ID: ${{ secrets.AS_REPO_ID }}
+        AS_USERNAME: ${{ secrets.AS_USERNAME }}
+        DJANGO_ALLOWED_HOSTS: ${{ secrets.DJANGO_ALLOWED_HOSTS }}
+        DJANGO_CORS_ALLOWED_ORIGINS: ${{ secrets.DJANGO_CORS_ALLOWED_ORIGINS }}
+        DJANGO_DEBUG: ${{ secrets.DJANGO_DEBUG }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+        SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+        SQL_HOST: ${{ secrets.SQL_HOST }}
+        SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+        SQL_PORT: ${{ secrets.SQL_PORT }}
+        SQL_USER: ${{ secrets.SQL_USER }}
+      run: |
+        envsubst '${AS_BASEURL} ${AS_PASSWORD} ${AS_REPO_ID} ${AS_USERNAME} ${DJANGO_ALLOWED_HOSTS} ${DJANGO_CORS_ALLOWED_ORIGINS} ${DJANGO_DEBUG} ${DJANGO_SECRET_KEY} ${SQL_DATABASE} ${SQL_ENGINE} ${SQL_HOST} ${SQL_PASSWORD} ${SQL_PORT} ${SQL_USER}' \
+          < cartographer_backend/config.py.deploy > cartographer_backend/config.py
+        rm cartographer_backend/config.py.deploy
+    - name: Render request_broker Django configuration
+      if: ${{ inputs.app-name == 'request_broker' }}
+      shell: bash
+      env:
+        AEON_APIKEY: ${{ secrets.AEON_APIKEY }}
+        AEON_BASEURL: ${{ secrets.AEON_BASEURL }}
+        AEON_CACHE_DURATION: ${{ secrets.AEON_CACHE_DURATION }}
+        API_BASEURL: ${{ secrets.API_BASEURL }}
+        AS_BASEURL: ${{ secrets.AS_BASEURL }}
+        AS_PASSWORD: ${{ secrets.AS_PASSWORD }}
+        AS_REPO_ID: ${{ secrets.AS_REPO_ID }}
+        AS_USERNAME: ${{ secrets.AS_USERNAME }}
+        DEFAULT_FROM_EMAIL: ${{ secrets.DEFAULT_FROM_EMAIL }}
+        DIMES_BASEURL: ${{ secrets.DIMES_BASEURL }}
+        DJANGO_ALLOWED_HOSTS: ${{ secrets.DJANGO_ALLOWED_HOSTS }}
+        DJANGO_CORS_ALLOWED_ORIGINS: ${{ secrets.DJANGO_CORS_ALLOWED_ORIGINS }}
+        DJANGO_DEBUG: ${{ secrets.DJANGO_DEBUG }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+        EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+        EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+        EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+        EMAIL_USE_SSL: ${{ secrets.EMAIL_USE_SSL }}
+        EMAIL_USE_TLS: ${{ secrets.EMAIL_USE_TLS }}
+        OFFSITE_BUILDINGS: ${{ secrets.OFFSITE_BUILDINGS }}
+        RESOURCE_ID_SEPARATOR: ${{ secrets.RESOURCE_ID_SEPARATOR }}
+        RESTRICTED_IN_CONTAINER: ${{ secrets.RESTRICTED_IN_CONTAINER }}
+        SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+        SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+        SQL_HOST: ${{ secrets.SQL_HOST }}
+        SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+        SQL_PORT: ${{ secrets.SQL_PORT }}
+        SQL_USER: ${{ secrets.SQL_USER }}
+        USE_LOCATION_TITLE: ${{ secrets.USE_LOCATION_TITLE }}
+      run: |
+        envsubst '${AEON_APIKEY} ${AEON_BASEURL} ${AEON_CACHE_DURATION} ${API_BASEURL} ${AS_BASEURL} ${AS_PASSWORD} ${AS_REPO_ID} ${AS_USERNAME} ${DEFAULT_FROM_EMAIL} ${DIMES_BASEURL} ${DJANGO_ALLOWED_HOSTS} ${DJANGO_CORS_ALLOWED_ORIGINS} ${DJANGO_DEBUG} ${DJANGO_SECRET_KEY} ${EMAIL_HOST} ${EMAIL_HOST_PASSWORD} ${EMAIL_HOST_USER} ${EMAIL_PORT} ${EMAIL_USE_SSL} ${EMAIL_USE_TLS} ${OFFSITE_BUILDINGS} ${RESOURCE_ID_SEPARATOR} ${RESTRICTED_IN_CONTAINER} ${SQL_DATABASE} ${SQL_ENGINE} ${SQL_HOST} ${SQL_PASSWORD} ${SQL_PORT} ${SQL_USER} ${USE_LOCATION_TITLE}' \
+          < request_broker/config.py.deploy > request_broker/config.py
+        rm request_broker/config.py.deploy
+    - name: Render zodiac_backend Django configuration
+      if: ${{ inputs.app-name == 'zodiac_backend' }}
+      shell: bash
+      env:
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        AWS_SNS_TOPIC_ARN: ${{ secrets.AWS_SNS_TOPIC_ARN }}
+        DJANGO_ALLOWED_HOSTS: ${{ secrets.DJANGO_ALLOWED_HOSTS }}
+        DJANGO_DEBUG: ${{ secrets.DJANGO_DEBUG }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+        SQL_ENGINE: ${{ secrets.SQL_ENGINE }}
+        SQL_HOST: ${{ secrets.SQL_HOST }}
+        SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+        SQL_PORT: ${{ secrets.SQL_PORT }}
+        SQL_USER: ${{ secrets.SQL_USER }}
+      run: |
+        envsubst '${AWS_REGION} ${AWS_ROLE_ARN} ${AWS_SNS_TOPIC_ARN} ${DJANGO_ALLOWED_HOSTS} ${DJANGO_DEBUG} ${DJANGO_SECRET_KEY} ${SQL_DATABASE} ${SQL_ENGINE} ${SQL_HOST} ${SQL_PASSWORD} ${SQL_PORT} ${SQL_USER}' \
+          < zodiac_backend/config.py.deploy > zodiac_backend/config.py
+        rm zodiac_backend/config.py.deploy
+    - name: Render CodeDeploy appspec
+      env:
+        ROOT_DIR: ${{ secrets.ROOT_DIR }}
+      run: "envsubst '${ROOT_DIR}' < appspec.yml.deploy > appspec.yml\nrm appspec.yml.deploy"
+    - name: Render install_dependencies_django.sh
+      env:
+        ROOT_DIR: ${{ secrets.ROOT_DIR }}
+        PYTHON_PATH: ${{ secrets.PYTHON_PATH }}
+      run: "envsubst '${ROOT_DIR} ${PYTHON_PATH}' < deploy_scripts/install_dependencies_django.sh.deploy
+        > deploy_scripts/install_dependencies_django.sh\nrm deploy_scripts/install_dependencies_django.sh.deploy"
+    - name: Render run_management_commands_django.sh
+      env:
+        ROOT_DIR: ${{ secrets.ROOT_DIR }}
+        PYTHON_PATH: ${{ secrets.PYTHON_PATH }}
+      run: "envsubst '${ROOT_DIR}' < deploy_scripts/run_management_commands_django.sh.deploy
+        > deploy_scripts/run_management_commands_django.sh\nrm deploy_scripts/run_management_commands_django.sh.deploy"
+    - name: Render set_permissions.sh
+      env:
+        ROOT_DIR: ${{ secrets.ROOT_DIR }}
+        PYTHON_PATH: ${{ secrets.PYTHON_PATH }}
+      run: "envsubst '${ROOT_DIR}' < deploy_scripts/set_permissions.sh.deploy > deploy_scripts/set_permissions.sh\n\
+        rm deploy_scripts/set_permissions.sh.deploy"
+    - name: Render curl_index.sh
+      if: ${{ 
+        contains(fromJSON('["aurora","cartographer_backend","request_broker","zodiac_backend"]'),
+        inputs.app-name) }}
+      env:
+        APPLICATION_PORT: ${{ inputs.app-port }}
+        APPLICATION_NAME: ${{ inputs.app-name }}
+        ROOT_DIR: ${{ secrets.ROOT_DIR }}
+        DJANGO_CRON_LOCKFILE_PATH: ${{ secrets.DJANGO_CRON_LOCKFILE_PATH }}
+      run: "envsubst '${APPLICATION_PORT}' < deploy_scripts/curl_index.sh.deploy >
+        deploy_scripts/curl_index.sh\nrm deploy_scripts/curl_index.sh.deploy"
+    - name: Render curl_status_endpoint.sh
+      if: ${{ contains(fromJSON('["argo","aurora"]'), inputs.app-name) }}
+      env:
+        APPLICATION_PORT: ${{ inputs.app-port }}
+        APPLICATION_NAME: ${{ inputs.app-name }}
+        ROOT_DIR: ${{ secrets.ROOT_DIR }}
+        DJANGO_CRON_LOCKFILE_PATH: ${{ secrets.DJANGO_CRON_LOCKFILE_PATH }}
+      run: "envsubst '${APPLICATION_PORT}' < deploy_scripts/curl_status_endpoint.sh.deploy
+        > deploy_scripts/curl_status_endpoint.sh\nrm deploy_scripts/curl_status_endpoint.sh.deploy"
+    - name: Render install_setuptools_pip.sh
+      if: ${{ contains(fromJSON('["argo"]'), inputs.app-name) }}
+      env:
+        APPLICATION_PORT: ${{ inputs.app-port }}
+        APPLICATION_NAME: ${{ inputs.app-name }}
+        ROOT_DIR: ${{ secrets.ROOT_DIR }}
+        DJANGO_CRON_LOCKFILE_PATH: ${{ secrets.DJANGO_CRON_LOCKFILE_PATH }}
+      run: "envsubst '${ROOT_DIR}' < deploy_scripts/install_setuptools_pip.sh.deploy
+        > deploy_scripts/install_setuptools_pip.sh\nrm deploy_scripts/install_setuptools_pip.sh.deploy"
+    - name: Render stop_cron.sh
+      if: ${{ contains(fromJSON('["aurora"]'), inputs.app-name) }}
+      env:
+        APPLICATION_PORT: ${{ inputs.app-port }}
+        APPLICATION_NAME: ${{ inputs.app-name }}
+        ROOT_DIR: ${{ secrets.ROOT_DIR }}
+        DJANGO_CRON_LOCKFILE_PATH: ${{ secrets.DJANGO_CRON_LOCKFILE_PATH }}
+      run: "envsubst '${APPLICATION_NAME} ${DJANGO_CRON_LOCKFILE_PATH}' < deploy_scripts/stop_cron.sh.deploy
+        > deploy_scripts/stop_cron.sh\nrm deploy_scripts/stop_cron.sh.deploy"
+    - name: Set executable permissions on deployment scripts
+      run: chmod +x deploy_scripts/*.sh
+    - name: Create Django bundle using existing script
+      env:
+        DEPLOY_ZIP_DIR: ${{ secrets.DEPLOY_ZIP_DIR }}
+        DEPLOY_ZIP_NAME: ${{ secrets.DEPLOY_ZIP_NAME }}
+      run: sudo deploy_scripts/make_zip_django.sh "$DEPLOY_ZIP_DIR" 
+        "$DEPLOY_ZIP_NAME"
+    - name: Configure AWS via GitHub OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_CODEDEPLOY_ROLE }}
+        aws-region: ${{ secrets.AWS_REGION }}
+        role-duration-seconds: 900
+    - name: Upload deployment directory to S3
+      if: ${{ !inputs.direct-upload }}
+      run: aws s3 cp "${{ secrets.DEPLOY_ZIP_DIR }}" "s3://${{ 
+        secrets.AWS_CODEDEPLOY_BUCKET_NAME }}" --recursive
+    - name: Upload deployment ZIP directly to S3
+      if: ${{ inputs.direct-upload }}
+      run: aws s3 cp "${{ secrets.DEPLOY_ZIP_NAME }}" "s3://${{ 
+        secrets.AWS_CODEDEPLOY_BUCKET_NAME }}/${{ secrets.DEPLOY_ZIP_NAME }}"
+    - name: Create CodeDeploy deployment
+      env:
+        APP: ${{ inputs.app-name }}
+        BUCKET: ${{ secrets.AWS_CODEDEPLOY_BUCKET_NAME }}
+        ZIP_NAME: ${{ secrets.DEPLOY_ZIP_NAME }}
+        GROUP: ${{ secrets.DEPLOYMENT_GROUP }}
+      run: |
+        aws deploy create-deployment --region "${{ secrets.AWS_REGION }}" --application-name "$APP" --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name "$GROUP" --s3-location "bucket=$BUCKET,bundleType=zip,key=$ZIP_NAME"

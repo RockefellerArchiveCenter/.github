@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v6.0.2
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: development
+          ref: base
           fetch-depth: 0
 
       - name: Set up Python
@@ -95,7 +95,7 @@ jobs:
         uses: peter-evans/create-pull-request@v8.1.1
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
-          base: development
+          base: base
           branch: dependency-updates
           title: "fix(deps): Scheduled dependency updates"
           commit-message: "fix(deps): Scheduled dependency updates"

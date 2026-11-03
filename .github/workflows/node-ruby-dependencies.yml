@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: development
+          ref: base
           fetch-depth: 0
 
       - name: Detect dependency files
@@ -51,12 +51,11 @@ jobs:
         run: bundle update --all && bundle install
 
       - uses: actions/setup-node@v6.4.0
-        if: steps.detect.outputs.uses_npm == 'true' || steps.detect.outputs.uses_yarn == 'true'
         with:
           node-version: ${{ inputs.node-version }}
 
       - name: Update npm dependencies
-        if: steps.detect.outputs.uses_npm == 'true'
+        if: steps.detect.outputs.uses_npm == 'true' && steps.detect.outputs.uses_yarn != 'true'
         run: |
           npm install --ignore-scripts
           npm upgrade --ignore-scripts
@@ -85,7 +84,7 @@ jobs:
         uses: peter-evans/create-pull-request@v8.1.1
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
-          base: development
+          base: base
           branch: dependency-updates
           title: "fix(deps): Dependency Updates"
           commit-message: "fix(deps): Scheduled dependency updates"

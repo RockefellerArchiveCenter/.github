@@ -1,0 +1,78 @@
+jobs:
+  test:
+    env:
+      APPLICATION_NAME: ${{ github.event.repository.name }}
+      APPLICATION_PORT: ${{ (github.event.repository.name == 'aquila' && '8009') || (github.event.repository.name == 'argo' && '8014') || 
+        (github.event.repository.name == 'aurora' && '8006') || (github.event.repository.name == 'cartographer_backend' && '8000') || 
+        (github.event.repository.name == 'digitized_av_qc' && '80') || (github.event.repository.name == 'digitized_image_qc' && '80') || 
+        (github.event.repository.name == 'fluxx_exporter' && '8003') || (github.event.repository.name == 'request_broker' && '80') || 
+        (github.event.repository.name == 'zodiac_backend' && '8000') || '' }}
+      CONTAINER: ${{ (github.event.repository.name == 'aquila' && 'aquila-web') || (github.event.repository.name == 'argo' && 'web') || 
+        (github.event.repository.name == 'aurora' && 'web') || (github.event.repository.name == 'cartographer_backend' && 
+        'cartographer-backend') || (github.event.repository.name == 'digitized_av_qc' && 'web') || (github.event.repository.name == 
+        'digitized_image_qc' && 'web') || (github.event.repository.name == 'fluxx_exporter' && 'web') || (github.event.repository.name == 
+        'request_broker' && 'request-broker-web') || (github.event.repository.name == 'zodiac_backend' && 'web') || '' }}
+    environment: development
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:stable
+        options: --privileged
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'argo' || github.event.repository.name 
+          == 'aurora' }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Prepare Django configuration (profile 1)
+      if: ${{ github.event.repository.name == 'argo' || github.event.repository.name == 'aurora' || github.event.repository.name == 
+        'cartographer_backend' || github.event.repository.name == 'request_broker' }}
+      run: cp $APPLICATION_NAME/config.py.example $APPLICATION_NAME/config.py
+    - name: Log in to Docker
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+    - name: Start Docker containers
+      run: docker compose up -d
+    - name: Wait for containers (profile 1)
+      if: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'aurora' || github.event.repository.name == 
+        'cartographer_backend' || github.event.repository.name == 'request_broker' || github.event.repository.name == 'zodiac_backend' }}
+      run: ./wait-for-it.sh $CONTAINER:$APPLICATION_PORT -- echo "$CONTAINER is ready"
+    - name: Run tests (profile 1)
+      if: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'argo' || github.event.repository.name == 'aurora'
+        || github.event.repository.name == 'cartographer_backend' || github.event.repository.name == 'digitized_av_qc' || 
+        github.event.repository.name == 'digitized_image_qc' || github.event.repository.name == 'fluxx_exporter' || 
+        github.event.repository.name == 'request_broker' || github.event.repository.name == 'zodiac_backend' }}
+      run: docker compose exec -T $CONTAINER python manage.py test
+    - name: Run additional tests (argo)
+      if: ${{ github.event.repository.name == 'argo' }}
+      run: docker compose exec -T $CONTAINER python manage.py test
+    - if: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'argo' || github.event.repository.name == 'aurora'
+        || github.event.repository.name == 'cartographer_backend' || github.event.repository.name == 'digitized_av_qc' || 
+        github.event.repository.name == 'digitized_image_qc' || github.event.repository.name == 'fluxx_exporter' || 
+        github.event.repository.name == 'request_broker' || github.event.repository.name == 'zodiac_backend' }}
+      name: Install pre-commit
+      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npython -m pip install pre-commit\npre-commit install"
+    - name: Run pre-commit checks (profile 1)
+      if: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'argo' || github.event.repository.name == 'aurora'
+        || github.event.repository.name == 'cartographer_backend' || github.event.repository.name == 'digitized_av_qc' || 
+        github.event.repository.name == 'digitized_image_qc' || github.event.repository.name == 'fluxx_exporter' || 
+        github.event.repository.name == 'request_broker' || github.event.repository.name == 'zodiac_backend' }}
+      run: pre-commit run --all-files --show-diff-on-failure
+name: RAC shared test-python-docker
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        default: '3.12'
+        required: false
+        type: string
+    secrets:
+      DOCKER_PASSWORD:
+        required: false
+      DOCKER_USERNAME:
+        required: false
+permissions:
+  contents: read

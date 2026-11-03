@@ -1,0 +1,75 @@
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: ${{ github.event.repository.name == 'as_export' || github.event.repository.name == 'data_transform' || 
+          github.event.repository.name == 'digital_ingest_discovery' || github.event.repository.name == 'digital_ingest_transformation' }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install dependencies (rac_schemas)
+      if: ${{ github.event.repository.name == 'rac_schemas' }}
+      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npython -m pip install -r requirements.txt\npython -m pip install --upgrade tox"
+    - name: Install dependencies (profile 2)
+      if: ${{ github.event.repository.name == 'data_fetch' || github.event.repository.name == 'data_index' || github.event.repository.name 
+        == 'data_notifications' || github.event.repository.name == 'data_transform' || github.event.repository.name == 'dependency_tasks' ||
+        github.event.repository.name == 'digital_ingest_assembly' || github.event.repository.name == 'digital_ingest_discovery' || 
+        github.event.repository.name == 'digital_ingest_notifications' || github.event.repository.name == 'digital_ingest_transformation' ||
+        github.event.repository.name == 'digital_ingest_trigger' || github.event.repository.name == 'digital_ingest_webhook' || 
+        github.event.repository.name == 'digitization_tasks' || github.event.repository.name == 'digitized_av_notifications' || 
+        github.event.repository.name == 'digitized_av_packaging' || github.event.repository.name == 'digitized_av_trigger' || 
+        github.event.repository.name == 'digitized_av_validation' || github.event.repository.name == 'digitized_image_notifications' || 
+        github.event.repository.name == 'digitized_image_packaging' || github.event.repository.name == 'digitized_image_trigger' || 
+        github.event.repository.name == 'digitized_image_validation' || github.event.repository.name == 'iiif_derivatives' || 
+        github.event.repository.name == 'iiif_manifests' || github.event.repository.name == 'internal_digitization_validation' || 
+        github.event.repository.name == 'newly_published_collections' }}
+      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npython -m pip install tox"
+    - name: Install dependencies (profile 3)
+      if: ${{ github.event.repository.name == 'as_export' || github.event.repository.name == 'born_digital_trigger' || 
+        github.event.repository.name == 'born_digital_validation' || github.event.repository.name == 'data_merge' || 
+        github.event.repository.name == 'virtualvault_backend' }}
+      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npip install tox"
+    - name: Install dependencies (rac_schema_validator)
+      if: ${{ github.event.repository.name == 'rac_schema_validator' }}
+      run: "pip install -r requirements.txt\npython -m pip install --upgrade \"pip>=26.2.2\"\npython -m pip install -r requirements.txt\npython
+        -m pip install --upgrade tox"
+    - name: Install dependencies (profile 5)
+      if: ${{ github.event.repository.name == 'data_pipeline' || github.event.repository.name == 'digital_ingest_pipeline' || 
+        github.event.repository.name == 'digitized_image_pipeline' }}
+      run: pip install -rrequirements.txt
+    - name: Run lint checks (profile 1)
+      if: ${{ github.event.repository.name == 'data_pipeline' || github.event.repository.name == 'digital_ingest_pipeline' || 
+        github.event.repository.name == 'digitized_image_pipeline' }}
+      run: cfn-lint *.yaml
+    - name: Run tests (profile 1)
+      if: ${{ github.event.repository.name == 'as_export' || github.event.repository.name == 'born_digital_trigger' || 
+        github.event.repository.name == 'born_digital_validation' || github.event.repository.name == 'data_fetch' || 
+        github.event.repository.name == 'data_index' || github.event.repository.name == 'data_merge' || github.event.repository.name == 
+        'data_notifications' || github.event.repository.name == 'data_transform' || github.event.repository.name == 'dependency_tasks' || 
+        github.event.repository.name == 'digital_ingest_assembly' || github.event.repository.name == 'digital_ingest_discovery' || 
+        github.event.repository.name == 'digital_ingest_notifications' || github.event.repository.name == 'digital_ingest_transformation' ||
+        github.event.repository.name == 'digital_ingest_trigger' || github.event.repository.name == 'digital_ingest_webhook' || 
+        github.event.repository.name == 'digitization_tasks' || github.event.repository.name == 'digitized_av_notifications' || 
+        github.event.repository.name == 'digitized_av_packaging' || github.event.repository.name == 'digitized_av_trigger' || 
+        github.event.repository.name == 'digitized_av_validation' || github.event.repository.name == 'digitized_image_notifications' || 
+        github.event.repository.name == 'digitized_image_packaging' || github.event.repository.name == 'digitized_image_trigger' || 
+        github.event.repository.name == 'digitized_image_validation' || github.event.repository.name == 'iiif_derivatives' || 
+        github.event.repository.name == 'iiif_manifests' || github.event.repository.name == 'internal_digitization_validation' || 
+        github.event.repository.name == 'newly_published_collections' || github.event.repository.name == 'rac_schemas' || 
+        github.event.repository.name == 'virtualvault_backend' }}
+      run: tox
+name: RAC shared test-python
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        default: '3.12'
+        required: false
+        type: string
+    secrets: {}
+permissions:
+  contents: read
