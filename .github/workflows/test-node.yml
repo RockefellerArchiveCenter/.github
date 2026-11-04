@@ -1,35 +1,4 @@
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: "''"
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ inputs.node-version }}
-    - name: Install dependencies (profile 1)
-      if: ${{ github.event.repository.name == 'cartographer_frontend' || github.event.repository.name == 'dimes' || 
-        github.event.repository.name == 'styles' || github.event.repository.name == 'virtualvault_frontend' || github.event.repository.name 
-        == 'zodiac_frontend' }}
-      run: yarn install --ignore-scripts
-    - name: Run lint checks (profile 1)
-      if: ${{ github.event.repository.name == 'cartographer_frontend' || github.event.repository.name == 'styles' || 
-        github.event.repository.name == 'virtualvault_frontend' || github.event.repository.name == 'zodiac_frontend' }}
-      run: yarn lint
-    - name: Run tests (profile 1)
-      if: ${{ github.event.repository.name == 'cartographer_frontend' || github.event.repository.name == 'dimes' || 
-        github.event.repository.name == 'styles' }}
-      run: yarn test
-    - name: Build project (dimes)
-      if: ${{ github.event.repository.name == 'dimes' }}
-      run: yarn build
-    - name: Build project (virtualvault_frontend, zodiac_frontend)
-      if: ${{ github.event.repository.name == 'virtualvault_frontend' || github.event.repository.name == 'zodiac_frontend' }}
-      run: yarn test
-name: RAC shared test-node
+name: Reusable test-node
 on:
   workflow_call:
     inputs:
@@ -38,5 +7,45 @@ on:
         required: false
         type: string
     secrets: {}
+
 permissions:
   contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: "''"
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install dependencies
+      if: ${{ github.event.repository.name == 'cartographer_frontend' || github.event.repository.name == 'dimes' || 
+        github.event.repository.name == 'styles' || github.event.repository.name == 'virtualvault_frontend' || github.event.repository.name 
+        == 'zodiac_frontend' }}
+      run: yarn install --ignore-scripts
+
+    - name: Run lint checks
+      if: ${{ github.event.repository.name == 'cartographer_frontend' || github.event.repository.name == 'styles' || 
+        github.event.repository.name == 'virtualvault_frontend' || github.event.repository.name == 'zodiac_frontend' }}
+      run: yarn lint
+
+    - name: Run tests
+      if: ${{ github.event.repository.name == 'cartographer_frontend' || github.event.repository.name == 'dimes' || 
+        github.event.repository.name == 'styles' }}
+      run: yarn test
+
+    - name: Build dimes
+      if: ${{ github.event.repository.name == 'dimes' }}
+      run: yarn build
+
+    - name: Build (virtualvault_frontend, zodiac_frontend)
+      if: ${{ github.event.repository.name == 'virtualvault_frontend' || github.event.repository.name == 'zodiac_frontend' }}
+      run: yarn test
+

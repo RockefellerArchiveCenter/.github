@@ -1,4 +1,4 @@
-name: RAC reusable s3-cloudfront
+name: Reusable s3-cloudfront
 on:
   workflow_call:
     inputs:
@@ -9,45 +9,55 @@ on:
         type: boolean
         required: false
         default: false
+
 permissions:
   contents: read
   id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ inputs.deployment-environment }}
     steps:
-      - name: Checkout caller repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: ${{ inputs.checkout-submodules }}
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '>=24.22.1 <25'
+
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: ./node_modules
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: ${{ runner.os }}-yarn-
+
       - name: Install dependencies
         run: yarn install --ignore-scripts
-      - name: Render frontend environment template
+
+      - name: Make template
         uses: RockefellerArchiveCenter/.github/.github/actions/render-deploy-templates@base
         with:
           template-files: .env.deploy
           secrets-json: ${{ toJSON(secrets) }}
-      - name: Build frontend
+
+      - name: Build
         run: |
           yarn build
-      - name: Configure AWS via GitHub OIDC
+
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_S3_CLOUDFRONT_DEPLOY_ROLE }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 900
+
       - name: Publish S3 assets
         run: aws s3 sync "${{ secrets.LOCAL_DIR }}" "s3://${{ secrets.AWS_BUCKET_NAME }}" --region "${{ secrets.AWS_REGION }}"
+        
       - name: Invalidate CloudFront
         run: aws cloudfront create-invalidation --region "${{ secrets.AWS_REGION }}" --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" --paths '/*'

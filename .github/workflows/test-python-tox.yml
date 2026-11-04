@@ -1,38 +1,4 @@
-jobs:
-  test:
-    env:
-      TOXENV: ${{ inputs.toxenv }}
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: "''"
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ inputs.python-version }}
-    - name: Install dependencies (ElectronBonder)
-      if: ${{ github.event.repository.name == 'ElectronBonder' }}
-      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npip install tox"
-    - name: Install dependencies (asterism)
-      if: ${{ github.event.repository.name == 'asterism' }}
-      run: pip install tox
-    - name: Install dependencies (rac_es)
-      if: ${{ github.event.repository.name == 'rac_es' }}
-      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npip install -r test_requirements.txt"
-    - name: Install dependencies (rac_api_client)
-      if: ${{ github.event.repository.name == 'rac_api_client' }}
-      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npython -m pip install -r requirements.txt\npython -m pip install --upgrade tox"
-    - name: Install dependencies (DACSspace)
-      if: ${{ github.event.repository.name == 'DACSspace' }}
-      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npython -m pip install tox"
-    - name: Run tests (profile 1)
-      if: ${{ github.event.repository.name == 'DACSspace' || github.event.repository.name == 'ElectronBonder' || 
-        github.event.repository.name == 'asterism' || github.event.repository.name == 'rac_api_client' || github.event.repository.name == 
-        'rac_es' }}
-      run: tox
-name: RAC shared test-python-matrix
+name: Reusable python tests with tox
 on:
   workflow_call:
     inputs:
@@ -45,5 +11,57 @@ on:
         required: false
         default: ''
     secrets: {}
+
 permissions:
   contents: read
+
+jobs:
+  test:
+    env:
+      TOXENV: ${{ inputs.toxenv }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: "''"
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install dependencies (ElectronBonder)
+      if: ${{ github.event.repository.name == 'ElectronBonder' }}
+      run: |
+        python -m pip install --upgrade "pip>=26.2.2"
+        pip install tox
+
+    - name: Install dependencies (asterism)
+      if: ${{ github.event.repository.name == 'asterism' }}
+      run: pip install tox
+
+    - name: Install dependencies (rac_es)
+      if: ${{ github.event.repository.name == 'rac_es' }}
+      run: |
+        python -m pip install --upgrade "pip>=26.2.2"
+        pip install -r test_requirements.txt
+
+    - name: Install dependencies (rac_api_client)
+      if: ${{ github.event.repository.name == 'rac_api_client' }}
+      run: |
+        python -m pip install --upgrade "pip>=26.2.2"
+        python -m pip install -r requirements.txt
+        python -m pip install --upgrade tox
+
+    - name: Install dependencies (DACSspace)
+      if: ${{ github.event.repository.name == 'DACSspace' }}
+      run: |
+        python -m pip install --upgrade "pip>=26.2.2"
+        python -m pip install tox
+
+    - name: Run tests
+      if: ${{ github.event.repository.name == 'DACSspace' || github.event.repository.name == 'ElectronBonder' || 
+        github.event.repository.name == 'asterism' || github.event.repository.name == 'rac_api_client' || github.event.repository.name == 
+        'rac_es' }}
+      run: tox

@@ -1,3 +1,20 @@
+name: Reusable python tests docker
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        default: '3.12'
+        required: false
+        type: string
+    secrets:
+      DOCKER_PASSWORD:
+        required: false
+      DOCKER_USERNAME:
+        required: false
+
+permissions:
+  contents: read
+
 jobs:
   test:
     env:
@@ -24,55 +41,45 @@ jobs:
       with:
         submodules: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'argo' || github.event.repository.name 
           == 'aurora' }}
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
-    - name: Prepare Django configuration (profile 1)
+
+    - name: Prepare Django configuration
       if: ${{ github.event.repository.name == 'argo' || github.event.repository.name == 'aurora' || github.event.repository.name == 
         'cartographer_backend' || github.event.repository.name == 'request_broker' }}
       run: cp $APPLICATION_NAME/config.py.example $APPLICATION_NAME/config.py
+
     - name: Log in to Docker
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
     - name: Start Docker containers
       run: docker compose up -d
-    - name: Wait for containers (profile 1)
+
+    - name: Wait for containers
       if: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'aurora' || github.event.repository.name == 
         'cartographer_backend' || github.event.repository.name == 'request_broker' || github.event.repository.name == 'zodiac_backend' }}
       run: ./wait-for-it.sh $CONTAINER:$APPLICATION_PORT -- echo "$CONTAINER is ready"
-    - name: Run tests (profile 1)
+
+    - name: Run tests
       if: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'argo' || github.event.repository.name == 'aurora'
         || github.event.repository.name == 'cartographer_backend' || github.event.repository.name == 'digitized_av_qc' || 
         github.event.repository.name == 'digitized_image_qc' || github.event.repository.name == 'fluxx_exporter' || 
         github.event.repository.name == 'request_broker' || github.event.repository.name == 'zodiac_backend' }}
       run: docker compose exec -T $CONTAINER python manage.py test
-    - name: Run additional tests (argo)
-      if: ${{ github.event.repository.name == 'argo' }}
-      run: docker compose exec -T $CONTAINER python manage.py test
-    - if: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'argo' || github.event.repository.name == 'aurora'
-        || github.event.repository.name == 'cartographer_backend' || github.event.repository.name == 'digitized_av_qc' || 
-        github.event.repository.name == 'digitized_image_qc' || github.event.repository.name == 'fluxx_exporter' || 
-        github.event.repository.name == 'request_broker' || github.event.repository.name == 'zodiac_backend' }}
-      name: Install pre-commit
-      run: "python -m pip install --upgrade \"pip>=26.2.2\"\npython -m pip install pre-commit\npre-commit install"
-    - name: Run pre-commit checks (profile 1)
+
+    - name: Install pre-commit
+      run: |
+        python -m pip install --upgrade "pip>=26.2.2"
+        python -m pip install pre-commit
+        pre-commit install
+
+    - name: Run pre-commit checks
       if: ${{ github.event.repository.name == 'aquila' || github.event.repository.name == 'argo' || github.event.repository.name == 'aurora'
         || github.event.repository.name == 'cartographer_backend' || github.event.repository.name == 'digitized_av_qc' || 
         github.event.repository.name == 'digitized_image_qc' || github.event.repository.name == 'fluxx_exporter' || 
         github.event.repository.name == 'request_broker' || github.event.repository.name == 'zodiac_backend' }}
       run: pre-commit run --all-files --show-diff-on-failure
-name: RAC shared test-python-docker
-on:
-  workflow_call:
-    inputs:
-      python-version:
-        default: '3.12'
-        required: false
-        type: string
-    secrets:
-      DOCKER_PASSWORD:
-        required: false
-      DOCKER_USERNAME:
-        required: false
-permissions:
-  contents: read
+

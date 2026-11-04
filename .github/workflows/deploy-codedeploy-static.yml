@@ -1,4 +1,4 @@
-name: RAC reusable codestatic
+name: Reusable codestatic
 on:
   workflow_call:
     inputs:
@@ -19,61 +19,76 @@ on:
         type: boolean
         required: false
         default: false
+
 permissions:
   contents: read
   id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ inputs.deployment-environment }}
     steps:
-      - name: Checkout caller repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: ${{ inputs.checkout-submodules }}
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '>=24.22.1 <25'
           cache: yarn
+
       - name: Install dependencies
         run: yarn install --ignore-scripts
+
       - name: Build static frontend
         run: CI=false yarn build
-      - name: Get shared deployment scripts
+
+      - name: Clone deployment scripts
         run: git clone https://github.com/RockefellerArchiveCenter/deploy_scripts.git
-      - name: Render deployment templates
+
+      - name: Make deployment templates
         uses: RockefellerArchiveCenter/.github/.github/actions/render-deploy-templates@base
         with:
           template-files: ${{ inputs.template-files }}
           secrets-json: ${{ toJSON(secrets) }}
           application-name: ${{ inputs.app-name }}
           application-port: ${{ secrets.APPLICATION_PORT }}
+
       - name: Make deploy scripts executable
         run: chmod +x deploy_scripts/*.sh
-      - name: Add deployment scripts to build
+
+      - name: Move deployment scripts
         run: |
           cp appspec.yml build/
           cp -r deploy_scripts/ build/
-      - name: Create deployment ZIP
+
+      - name: Create ZIP
         run: zip -r "${{ secrets.DEPLOY_ZIP_NAME }}" build
-      - name: Move deployment ZIP into upload directory
+        
+      - name: Move deployment ZIP
         run: |
           mkdir -p "${{ secrets.DEPLOY_ZIP_DIR }}"
           mv "${{ secrets.DEPLOY_ZIP_NAME }}" "${{ secrets.DEPLOY_ZIP_DIR }}/${{ secrets.DEPLOY_ZIP_NAME }}"
-      - name: Configure AWS via GitHub OIDC
+
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_CODEDEPLOY_ROLE }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 900
-      - name: Upload deployment directory to S3
+
+      - name: Upload directory to S3
         if: ${{ !inputs.direct-upload }}
         run: aws s3 cp "${{ secrets.DEPLOY_ZIP_DIR }}" "s3://${{ secrets.AWS_CODEDEPLOY_BUCKET_NAME }}" --recursive
-      - name: Upload deployment ZIP directly to S3
+
+      - name: Upload ZIP to S3
         if: ${{ inputs.direct-upload }}
         run: aws s3 cp "${{ secrets.DEPLOY_ZIP_NAME }}" "s3://${{ secrets.AWS_CODEDEPLOY_BUCKET_NAME }}/${{ secrets.DEPLOY_ZIP_NAME }}"
-      - name: Create CodeDeploy deployment
+
+      - name: Create deployment
         env:
           APP: ${{ inputs.app-name }}
           BUCKET: ${{ secrets.AWS_CODEDEPLOY_BUCKET_NAME }}

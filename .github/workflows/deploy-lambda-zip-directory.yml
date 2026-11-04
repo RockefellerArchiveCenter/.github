@@ -1,4 +1,4 @@
-name: RAC reusable lambda-zip-directory
+name: Reusable lambda-zip-directory
 on:
   workflow_call:
     inputs:
@@ -35,54 +35,67 @@ on:
         type: string
         required: false
         default: ''
+
 permissions:
   contents: read
   id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ inputs.deployment-environment }}
     steps:
-    - name: Checkout caller repository
+    - name: Checkout  repository
       uses: actions/checkout@v4
       with:
         submodules: ${{ inputs.checkout-submodules }}
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
+
     - name: Create dependency package directory
       if: inputs.dependency-mode != 'none'
       run: mkdir -p package
+
     - name: Update pip
       if: inputs.dependency-mode != 'none'
       run: python -m pip install --upgrade "pip>=26.2.2"
+
     - name: Install Python requirements
       if: inputs.dependency-mode == 'normal'
       run: pip install -r requirements.txt --target ./package
+      
     - name: Install manylinux Python requirements
       if: inputs.dependency-mode == 'manylinux'
       run: 'pip install --platform manylinux2014_x86_64 --only-binary=:all: -r requirements.txt --target ./package'
+
     - name: Add dependencies to ZIP
       if: inputs.dependency-mode != 'none'
       run: 'cd package
 
         zip -r ../${{ inputs.lambda-name }}.zip .'
+
     - name: Add extra directory to ZIP
       if: inputs.extra-dir != ''
       run: zip -r "${{ inputs.lambda-name }}.zip" "${{ inputs.extra-dir }}"
+
     - name: Add source directory to ZIP
       run: zip -r "${{ inputs.lambda-name }}.zip" "${{ inputs.source-dir }}"
-    - name: Configure AWS via GitHub OIDC
+
+    - name: Configure AWS
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_LAMBDA_DEPLOY_ROLE }}
         aws-region: ${{ secrets.AWS_REGION }}
         role-duration-seconds: 900
-    - name: Upload ZIP to S3
+
+    - name: Upload to S3
       env:
         LAMBDA_NAME: ${{ inputs.lambda-name }}
       run: aws s3 cp "$LAMBDA_NAME.zip" "s3://${{ secrets.LAMBDA_BUCKET_NAME }}/$LAMBDA_NAME.zip"
+      
     - name: Update Lambda function code
       env:
         LAMBDA_NAME: ${{ inputs.lambda-name }}

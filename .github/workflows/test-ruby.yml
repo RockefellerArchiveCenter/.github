@@ -1,3 +1,20 @@
+name: Reusable ruby tests
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        default: ''
+        required: false
+        type: string
+      ruby-version:
+        default: 3.3.6
+        required: false
+        type: string
+    secrets: {}
+
+permissions:
+  contents: read
+
 jobs:
   test:
     env:
@@ -11,50 +28,46 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: "''"
+
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
         bundler-cache: ${{ github.event.repository.name == 'advancing-foundation-archives' || github.event.repository.name == 
           'bits_and_bytes' || github.event.repository.name == 'library.rockarch.org' || github.event.repository.name == 'rockarch.org' }}
         ruby-version: ${{ inputs.ruby-version }}
+
     - if: inputs.node-version != ''
       name: Set up Node.js when required
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
-    - name: Install system packages (profile 1)
+
+    - name: Install system packages
       if: ${{ github.event.repository.name == 'advancing-foundation-archives' || github.event.repository.name == 'bits_and_bytes' || 
         github.event.repository.name == 'library.rockarch.org' || github.event.repository.name == 'rockarch.org' }}
-      run: "sudo apt-get update\nsudo apt-get install -y libcurl4-openssl-dev"
-    - name: Install dependencies (profile 1)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcurl4-openssl-dev"
+
+    - name: Install dependencies
       if: ${{ github.event.repository.name == 'advancing-foundation-archives' || github.event.repository.name == 'bits_and_bytes' || 
         github.event.repository.name == 'rockarch.org' }}
       run: bundle install
+
     - name: Install Node dependencies (library.rockarch.org)
       if: ${{ github.event.repository.name == 'library.rockarch.org' }}
       run: npm install --ignore-scripts
+
     - name: Run tests (library.rockarch.org)
       if: ${{ github.event.repository.name == 'library.rockarch.org' }}
       run: npm test
+
     - name: Build project (profile 1)
       if: ${{ github.event.repository.name == 'advancing-foundation-archives' || github.event.repository.name == 'bits_and_bytes' || 
         github.event.repository.name == 'rockarch.org' }}
       run: ./script/cibuild
+
     - name: Build project (library.rockarch.org)
       if: ${{ github.event.repository.name == 'library.rockarch.org' }}
       run: ./script/build
-name: RAC shared test-ruby
-on:
-  workflow_call:
-    inputs:
-      node-version:
-        default: ''
-        required: false
-        type: string
-      ruby-version:
-        default: 3.3.6
-        required: false
-        type: string
-    secrets: {}
-permissions:
-  contents: read
+
