@@ -1,4 +1,6 @@
+
 name: Reusable lambda-image
+
 on:
   workflow_call:
     inputs:
@@ -28,77 +30,107 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ inputs.deployment-environment }}
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: ${{ inputs.checkout-submodules }}
-        fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.checkout-submodules }}
+          fetch-depth: 0
 
-    - name: Copy docs config
-      if: inputs.copy-docs-config
-      run: cp theme/_config.yml.example theme/config.yml
+      - name: Copy docs config
+        if: inputs.copy-docs-config
+        run: cp theme/_config.yml.example theme/config.yml
 
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ inputs.deployment-environment == 'base' && secrets.AWS_LAMBDA_IMAGE_DEPLOY_ROLE || secrets.AWS_ECR_DEPLOY_ROLE 
-          }}
-        aws-region: ${{ secrets.AWS_REGION }}
-        role-duration-seconds: 900
+      - name: Configure AWS for production ECR
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ github.event_name == 'release' && secrets.AWS_LAMBDA_IMAGE_DEPLOY_ROLE || secrets.AWS_ECR_DEPLOY_ROLE }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-duration-seconds: 900
 
-    - name: Validate ECR
-      env:
-        ECR_ACCOUNT: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
-      run: 'test -n "$ECR_ACCOUNT" || { echo "::error::AWS_ECR_ACCOUNT_ID is required"; exit 1; }
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-        aws sts get-caller-identity --query Account --output text | grep -Fx "$ECR_ACCOUNT" || { echo "::error::ECR role must be in target registry
-        account (cross-account mode not enabled)"; exit 1; }
+      - name: Build development image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/base'
+        run: docker build -t "${{ inputs.app-name }}" .
 
-        '
+      - name: Tag development image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/base'
+        run: |
+          docker tag \
+            "${{ inputs.app-name }}" \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev"
 
-    - name: Login to ECR
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Push development image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/base'
+        run: |
+          docker push \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev"
 
-    - name: Build development image
-      if: github.event_name == 'push' && github.ref == 'refs/heads/base'
-      run: docker build -t "${{ inputs.app-name }}" .
+      - name: Assume development Lambda deployment role
+        if: github.event_name == 'push' && github.ref == 'refs/heads/base'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::016161564811:role/RAC-Dev-LambdaImageDeployRole
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-chaining: true
+          role-duration-seconds: 900
 
-    - name: Tag development image
-      if: github.event_name == 'push' && github.ref == 'refs/heads/base'
-      run: docker tag "${{ inputs.app-name }}" "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ 
-        inputs.app-name }}:dev"
+      - name: Update development Lambda container image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/base'
+        env:
+          APP: ${{ inputs.app-name }}
+          LAMBDA: ${{ inputs.lambda-name }}
+          REGION: ${{ secrets.AWS_REGION }}
+          ECR_ACCOUNT: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+        run: |
+          aws lambda update-function-code \
+            --function-name "arn:aws:lambda:$REGION:016161564811:function:$LAMBDA" \
+            --image-uri "$ECR_ACCOUNT.dkr.ecr.$REGION.amazonaws.com/$APP:dev"
 
-    - name: Push development image
-      if: github.event_name == 'push' && github.ref == 'refs/heads/base'
-      run: docker push "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev"
+      - name: Pull development image for release
+        if: github.event_name == 'release' && github.event.action == 'published'
+        run: |
+          docker pull \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev"
 
-    - name: Pull development image for release
-      if: github.event_name == 'release' && github.event.action == 'published'
-      run: docker pull "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev"
+      - name: Tag production image
+        if: github.event_name == 'release' && github.event.action == 'published'
+        run: |
+          docker tag \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev" \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:prod"
 
-    - name: Tag production image
-      if: github.event_name == 'release' && github.event.action == 'published'
-      run: docker tag "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev" "${{ 
-        secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:prod"
+      - name: Push production image
+        if: github.event_name == 'release' && github.event.action == 'published'
+        run: |
+          docker push \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:prod"
 
-    - name: Push production image
-      if: github.event_name == 'release' && github.event.action == 'published'
-      run: docker push "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:prod"
+      - name: Tag latest image
+        if: github.event_name == 'release' && github.event.action == 'published'
+        run: |
+          docker tag \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev" \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:latest"
 
-    - name: Tag latest image
-      if: github.event_name == 'release' && github.event.action == 'published'
-      run: docker tag "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:dev" "${{ 
-        secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:latest"
+      - name: Push latest image
+        if: github.event_name == 'release' && github.event.action == 'published'
+        run: |
+          docker push \
+            "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:latest"
 
-    - name: Push latest image
-      if: github.event_name == 'release' && github.event.action == 'published'
-      run: docker push "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.app-name }}:latest"
-      
-    - name: Update Lambda container image
-      if: github.event_name == 'release' && github.event.action == 'published'
-      env:
-        APP: ${{ inputs.app-name }}
-        LAMBDA: ${{ inputs.lambda-name }}
-      run: aws lambda update-function-code --function-name "arn:aws:lambda:${{ secrets.AWS_REGION }}:${{ secrets.AWS_LAMBDA_ACCOUNT_ID 
-        }}:function:$LAMBDA" --image-uri "${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/$APP:prod"
+      - name: Update production Lambda container image
+        if: github.event_name == 'release' && github.event.action == 'published'
+        env:
+          APP: ${{ inputs.app-name }}
+          LAMBDA: ${{ inputs.lambda-name }}
+          REGION: ${{ secrets.AWS_REGION }}
+          ECR_ACCOUNT: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+          LAMBDA_ACCOUNT: ${{ secrets.AWS_LAMBDA_ACCOUNT_ID }}
+        run: |
+          aws lambda update-function-code \
+            --function-name "arn:aws:lambda:$REGION:$LAMBDA_ACCOUNT:function:$LAMBDA" \
+            --image-uri "$ECR_ACCOUNT.dkr.ecr.$REGION.amazonaws.com/$APP:prod"

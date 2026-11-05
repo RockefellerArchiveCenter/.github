@@ -86,7 +86,7 @@ jobs:
 
       - name: Upload ZIP to S3
         if: ${{ inputs.direct-upload }}
-        run: aws s3 cp "${{ secrets.DEPLOY_ZIP_NAME }}" "s3://${{ secrets.AWS_CODEDEPLOY_BUCKET_NAME }}/${{ secrets.DEPLOY_ZIP_NAME }}"
+        run: aws s3 cp "${{ secrets.DEPLOY_ZIP_DIR }}/${{ secrets.DEPLOY_ZIP_NAME }}" "s3://${{ secrets.AWS_CODEDEPLOY_BUCKET_NAME }}/${{ secrets.DEPLOY_ZIP_NAME }}"
 
       - name: Create deployment
         env:
